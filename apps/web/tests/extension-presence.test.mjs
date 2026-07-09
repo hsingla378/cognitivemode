@@ -30,8 +30,10 @@ test("landing page keeps CTA neutral while extension presence is checking", () =
 });
 
 test("landing page shows installed CTA and toolbar pin hint", () => {
-  assert.match(pageSource, /Extension Installed ✓/);
-  assert.match(pageSource, /Pin the extension to your toolbar/);
+  assert.match(pageSource, /Extension installed/);
+  assert.match(pageSource, /Pin Cognitive Mode to your toolbar/);
+  assert.match(pageSource, /installState === "installed"/);
+  assert.match(pageSource, /extension installed/);
 });
 
 test("landing page links missing-state CTA to the Chrome Web Store", () => {

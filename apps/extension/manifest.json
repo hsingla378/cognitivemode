@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Cognitive Mode",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Introduces intentional friction into AI prompting workflows.",
   "permissions": ["storage"],
   "background": {
