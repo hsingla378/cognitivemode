@@ -79,12 +79,10 @@ test("public docs describe the published Chrome Web Store install path", () => {
   );
 });
 
-test("public GitHub links point to the public repository", () => {
+test("public site does not expose repository links", () => {
   for (const source of [homePageSource, footerSource]) {
-    assert.match(
-      source,
-      /href="https:\/\/github\.com\/hsingla378\/cognitivemode\.app"/,
-    );
-    assert.doesNotMatch(source, /github\.com\/hsingla378\/cognitivemode"/);
+    assert.doesNotMatch(source, /github\.com\/hsingla378\/cognitivemode/);
+    assert.doesNotMatch(source, /View Source/);
+    assert.doesNotMatch(source, />\s*GitHub\s*</);
   }
 });

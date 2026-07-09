@@ -42,6 +42,7 @@ function App() {
   const [selfSolvedStats, setSelfSolvedStats] = useState<SelfSolvedStats | null>(null)
   const [recentLogs, setRecentLogs] = useState<CognitiveEntry[]>([])
   const [frictionDelay, setFrictionDelay] = useState(FRICTION_DELAY_DEFAULT)
+  const [enabled, setEnabled] = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -61,6 +62,7 @@ function App() {
       setFrictionDelay(
         Math.min(FRICTION_DELAY_MAX, Math.max(FRICTION_DELAY_MIN, settings.countdownDuration)),
       )
+      setEnabled(settings.enabled)
     }
 
     void loadDashboard()
@@ -74,6 +76,12 @@ function App() {
     const clamped = Math.min(FRICTION_DELAY_MAX, Math.max(FRICTION_DELAY_MIN, value))
     setFrictionDelay(clamped)
     await saveSettings({ countdownDuration: clamped })
+  }
+
+  async function handleEnabledToggle() {
+    const next = !enabled
+    setEnabled(next)
+    await saveSettings({ enabled: next })
   }
 
   function handleShareProgress() {
@@ -90,10 +98,22 @@ function App() {
     <div className="flex h-[520px] w-[360px] flex-col bg-zinc-950 text-zinc-100">
       <header className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
         <h1 className="text-sm font-semibold tracking-tight">Cognitive Mode</h1>
-        <div className="flex items-center gap-1.5 text-xs text-zinc-400">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
-          Active
-        </div>
+        <button
+          type="button"
+          onClick={() => void handleEnabledToggle()}
+          aria-pressed={enabled}
+          title={enabled ? 'Pause interception' : 'Activate interception'}
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-zinc-400 transition hover:bg-zinc-900 hover:text-zinc-200"
+        >
+          <span
+            className={`h-2 w-2 rounded-full ${
+              enabled
+                ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'
+                : 'bg-zinc-600'
+            }`}
+          />
+          {enabled ? 'Active' : 'Paused'}
+        </button>
       </header>
 
       <main className="flex min-h-0 flex-1 flex-col gap-3 px-4 py-4">

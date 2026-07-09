@@ -12,6 +12,7 @@ const SECONDS_PER_INTERCEPTION = 15
 
 export interface Settings {
   countdownDuration: number
+  enabled: boolean
 }
 
 export interface Stats {
@@ -42,6 +43,7 @@ interface BypassState {
 
 const DEFAULT_SETTINGS: Settings = {
   countdownDuration: DEFAULT_COUNTDOWN_DURATION,
+  enabled: true,
 }
 
 function isExtensionContextInvalidated(error: unknown): boolean {
@@ -267,28 +269,32 @@ export async function recordGateTriggered(): Promise<void> {
 
 export async function getSettings(): Promise<Settings> {
   const { [SETTINGS_KEY]: stored } = await safeStorageGet(SETTINGS_KEY, {})
-  if (
-    stored &&
-    typeof stored === 'object' &&
-    'countdownDuration' in stored &&
-    typeof stored.countdownDuration === 'number'
-  ) {
+  if (stored && typeof stored === 'object') {
+    const partial = stored as Partial<Settings>
     return {
       ...DEFAULT_SETTINGS,
-      ...(stored as Settings),
-      countdownDuration: clampCountdownDuration(stored.countdownDuration),
+      ...partial,
+      countdownDuration:
+        typeof partial.countdownDuration === 'number'
+          ? clampCountdownDuration(partial.countdownDuration)
+          : DEFAULT_SETTINGS.countdownDuration,
+      enabled: typeof partial.enabled === 'boolean' ? partial.enabled : DEFAULT_SETTINGS.enabled,
     }
   }
   return { ...DEFAULT_SETTINGS }
 }
 
-export async function saveSettings(settings: Settings): Promise<void> {
+export async function saveSettings(settings: Partial<Settings>): Promise<void> {
   const current = await getSettings()
   await safeStorageSet({
     [SETTINGS_KEY]: {
       ...current,
       ...settings,
-      countdownDuration: clampCountdownDuration(settings.countdownDuration),
+      countdownDuration:
+        settings.countdownDuration !== undefined
+          ? clampCountdownDuration(settings.countdownDuration)
+          : current.countdownDuration,
+      enabled: settings.enabled !== undefined ? settings.enabled : current.enabled,
     },
   })
 }

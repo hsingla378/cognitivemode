@@ -1,12 +1,15 @@
-import { initInterceptor } from './interceptor'
+import { initInterceptor, type InterceptorHandle } from './interceptor'
 import { mountOverlay } from './mount'
-import { recordGateTriggered, recordSelfSolved, saveCognitiveLog } from './storage'
-import type { PendingSubmit } from './types'
+import { getSettings, recordGateTriggered, recordSelfSolved, saveCognitiveLog } from './storage'
+import type { OverlayController, PendingSubmit } from './types'
 
 let pendingSubmit: PendingSubmit | null = null
+let overlay: OverlayController | null = null
+let interceptor: InterceptorHandle | null = null
 
 const EXTENSION_META_NAME = 'cognitivemode-extension'
 const EXTENSION_READY_EVENT = 'cognitivemode:ready'
+const SETTINGS_KEY = 'cognitive_settings'
 
 function isLandingPage(): boolean {
   const { hostname } = window.location
@@ -26,7 +29,54 @@ function dispatchExtensionReadyEvent(): void {
   window.dispatchEvent(new CustomEvent(EXTENSION_READY_EVENT))
 }
 
-function init() {
+function startInterception() {
+  if (interceptor) return
+
+  overlay =
+    overlay ??
+    mountOverlay({
+      async onSubmit({ hypothesis, tried, durationSeconds }) {
+        const submit = pendingSubmit
+        pendingSubmit = null
+
+        await saveCognitiveLog(hypothesis, tried, durationSeconds)
+        interceptor?.unlock(submit?.trigger)
+      },
+      async onSelfSolved({ hypothesis }) {
+        pendingSubmit = null
+
+        await recordSelfSolved(hypothesis)
+        interceptor?.releaseIntercept()
+      },
+      onDismiss() {
+        pendingSubmit = null
+        interceptor?.releaseIntercept()
+      },
+    })
+
+  interceptor = initInterceptor((pending) => {
+    pendingSubmit = pending
+    void recordGateTriggered()
+    overlay?.show(pending)
+  })
+}
+
+function stopInterception() {
+  pendingSubmit = null
+  overlay?.hide()
+  interceptor?.destroy()
+  interceptor = null
+}
+
+async function applyEnabledState(enabled: boolean) {
+  if (enabled) {
+    startInterception()
+  } else {
+    stopInterception()
+  }
+}
+
+async function init() {
   if (isLandingPage()) {
     injectExtensionMetaTag()
     dispatchExtensionReadyEvent()
@@ -34,30 +84,22 @@ function init() {
     return
   }
 
-  const overlay = mountOverlay({
-    async onSubmit({ hypothesis, tried, durationSeconds }) {
-      const submit = pendingSubmit
-      pendingSubmit = null
+  const settings = await getSettings()
+  await applyEnabledState(settings.enabled)
 
-      await saveCognitiveLog(hypothesis, tried, durationSeconds)
-      interceptor.unlock(submit?.trigger)
-    },
-    async onSelfSolved({ hypothesis }) {
-      pendingSubmit = null
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes[SETTINGS_KEY]) return
 
-      await recordSelfSolved(hypothesis)
-      interceptor.releaseIntercept()
-    },
-    onDismiss() {
-      pendingSubmit = null
-      interceptor.releaseIntercept()
-    },
-  })
+    const next = changes[SETTINGS_KEY].newValue
+    const enabled =
+      next &&
+      typeof next === 'object' &&
+      'enabled' in next &&
+      typeof next.enabled === 'boolean'
+        ? next.enabled
+        : true
 
-  const interceptor = initInterceptor((pending) => {
-    pendingSubmit = pending
-    void recordGateTriggered()
-    overlay.show(pending)
+    void applyEnabledState(enabled)
   })
 
   console.debug('[Cognitive Mode] content script active')
@@ -66,5 +108,5 @@ function init() {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init, { once: true })
 } else {
-  init()
+  void init()
 }

@@ -121,14 +121,6 @@ export default function Home() {
           >
             Try the friction demo
           </a>
-          <a
-            href="https://github.com/hsingla378/cognitivemode.app"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-11 items-center justify-center rounded-full border border-border/80 bg-[rgba(24,24,27,0.85)] px-5 text-sm font-medium text-muted transition hover:border-foreground/70 hover:text-foreground"
-          >
-            View Source
-          </a>
         </div>
 
         <p className="text-[11px] text-muted/80">
